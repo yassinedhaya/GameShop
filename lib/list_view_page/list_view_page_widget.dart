@@ -1,10 +1,10 @@
+import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/index.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import 'list_view_page_model.dart';
 export 'list_view_page_model.dart';
 
@@ -38,8 +38,6 @@ class _ListViewPageWidgetState extends State<ListViewPageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    context.watch<FFAppState>();
-
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
@@ -212,24 +210,64 @@ class _ListViewPageWidgetState extends State<ListViewPageWidget> {
         ),
         body: SafeArea(
           top: true,
-          child: Builder(
-            builder: (context) {
-              final listViewGames = FFAppState().games.toList();
+          child: StreamBuilder<List<GameRecord>>(
+            stream: queryGameRecord(),
+            builder: (context, snapshot) {
+              // Customize what your widget looks like when it's loading.
+              if (!snapshot.hasData) {
+                return Center(
+                  child: SizedBox(
+                    width: 50.0,
+                    height: 50.0,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        FlutterFlowTheme.of(context).primary,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              List<GameRecord> listViewGameRecordList = snapshot.data!;
 
               return ListView.builder(
                 padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 scrollDirection: Axis.vertical,
-                itemCount: listViewGames.length,
-                itemBuilder: (context, listViewGamesIndex) {
-                  final listViewGamesItem = listViewGames[listViewGamesIndex];
+                itemCount: listViewGameRecordList.length,
+                itemBuilder: (context, listViewIndex) {
+                  final listViewGameRecord =
+                      listViewGameRecordList[listViewIndex];
                   return InkWell(
                     splashColor: Colors.transparent,
                     focusColor: Colors.transparent,
                     hoverColor: Colors.transparent,
                     highlightColor: Colors.transparent,
                     onTap: () async {
-                      context.pushNamed(DetailsWidget.routeName);
+                      context.pushNamed(
+                        DetailsWidget.routeName,
+                        queryParameters: {
+                          'paramName': serializeParam(
+                            listViewGameRecord.nameGame,
+                            ParamType.String,
+                          ),
+                          'paamDescription': serializeParam(
+                            listViewGameRecord.descriptionGame,
+                            ParamType.String,
+                          ),
+                          'paramPrice': serializeParam(
+                            listViewGameRecord.priceGame,
+                            ParamType.int,
+                          ),
+                          'paramQuantity': serializeParam(
+                            listViewGameRecord.quantityGame,
+                            ParamType.int,
+                          ),
+                          'paramImage': serializeParam(
+                            listViewGameRecord.imageGame,
+                            ParamType.String,
+                          ),
+                        }.withoutNulls,
+                      );
                     },
                     child: Card(
                       clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -247,7 +285,7 @@ class _ListViewPageWidgetState extends State<ListViewPageWidget> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8.0),
                               child: Image.network(
-                                listViewGamesItem.image,
+                                listViewGameRecord.imageGame,
                                 width: 200.0,
                                 height: 200.0,
                                 fit: BoxFit.cover,
@@ -261,7 +299,7 @@ class _ListViewPageWidgetState extends State<ListViewPageWidget> {
                                 padding: EdgeInsetsDirectional.fromSTEB(
                                     20.0, 0.0, 0.0, 0.0),
                                 child: Text(
-                                  listViewGamesItem.nom,
+                                  listViewGameRecord.nameGame,
                                   style: FlutterFlowTheme.of(context)
                                       .bodyMedium
                                       .override(
@@ -287,7 +325,7 @@ class _ListViewPageWidgetState extends State<ListViewPageWidget> {
                                 ),
                               ),
                               Text(
-                                '${listViewGamesItem.prix.toString()} TND',
+                                ' TND${listViewGameRecord.priceGame.toString()}',
                                 style: FlutterFlowTheme.of(context)
                                     .bodyMedium
                                     .override(

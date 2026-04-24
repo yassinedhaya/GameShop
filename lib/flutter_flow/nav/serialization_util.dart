@@ -2,17 +2,21 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import '/backend/schema/structs/index.dart';
+import '/backend/backend.dart';
 
-import '../../flutter_flow/lat_lng.dart';
 import '../../flutter_flow/place.dart';
 import '../../flutter_flow/uploaded_file.dart';
 
 /// SERIALIZATION HELPERS
 
+String dateTimeToString(DateTime dateTime) =>
+    '${dateTime.isUtc ? 'u' : 'l'}${dateTime.millisecondsSinceEpoch}';
+
 String dateTimeRangeToString(DateTimeRange dateTimeRange) {
-  final startStr = dateTimeRange.start.millisecondsSinceEpoch.toString();
-  final endStr = dateTimeRange.end.millisecondsSinceEpoch.toString();
+  final start = dateTimeRange.start;
+  final end = dateTimeRange.end;
+  final startStr = '${start.isUtc ? 'u' : 'l'}${start.millisecondsSinceEpoch}';
+  final endStr = '${end.isUtc ? 'u' : 'l'}${end.millisecondsSinceEpoch}';
   return '$startStr|$endStr';
 }
 
@@ -28,6 +32,19 @@ String placeToString(FFPlace place) => jsonEncode({
 
 String uploadedFileToString(FFUploadedFile uploadedFile) =>
     uploadedFile.serialize();
+
+const _kDocIdDelimeter = '|';
+String _serializeDocumentReference(DocumentReference ref) {
+  final docIds = <String>[];
+  DocumentReference? currentRef = ref;
+  while (currentRef != null) {
+    docIds.add(currentRef.id);
+    // Get the parent document (catching any errors that arise).
+    currentRef = safeGet<DocumentReference?>(() => currentRef?.parent.parent);
+  }
+  // Reverse the list to get the correct ordering.
+  return docIds.reversed.join(_kDocIdDelimeter);
+}
 
 String? serializeParam(
   dynamic param,
@@ -57,7 +74,7 @@ String? serializeParam(
       case ParamType.bool:
         data = param ? 'true' : 'false';
       case ParamType.DateTime:
-        data = (param as DateTime).millisecondsSinceEpoch.toString();
+        data = dateTimeToString(param as DateTime);
       case ParamType.DateTimeRange:
         data = dateTimeRangeToString(param as DateTimeRange);
       case ParamType.LatLng:
@@ -70,6 +87,11 @@ String? serializeParam(
         data = uploadedFileToString(param as FFUploadedFile);
       case ParamType.JSON:
         data = json.encode(param);
+      case ParamType.DocumentReference:
+        data = _serializeDocumentReference(param as DocumentReference);
+      case ParamType.Document:
+        final reference = (param as FirestoreRecord).reference;
+        data = _serializeDocumentReference(reference);
 
       case ParamType.DataStruct:
         data = param is BaseStruct ? param.serialize() : null;
@@ -88,14 +110,46 @@ String? serializeParam(
 
 /// DESERIALIZATION HELPERS
 
+DateTime? dateTimeFromString(String? dateTimeStr) {
+  if (dateTimeStr == null || dateTimeStr.isEmpty) {
+    return null;
+  }
+  final hasPrefix = dateTimeStr.startsWith('u') || dateTimeStr.startsWith('l');
+  final milliseconds = int.tryParse(
+    hasPrefix ? dateTimeStr.substring(1) : dateTimeStr,
+  );
+  return milliseconds != null
+      ? DateTime.fromMillisecondsSinceEpoch(
+          milliseconds,
+          isUtc: hasPrefix ? dateTimeStr.startsWith('u') : false,
+        )
+      : null;
+}
+
 DateTimeRange? dateTimeRangeFromString(String dateTimeRangeStr) {
   final pieces = dateTimeRangeStr.split('|');
   if (pieces.length != 2) {
     return null;
   }
+  DateTime? parseDateTime(String value) {
+    final hasPrefix = value.startsWith('u') || value.startsWith('l');
+    final milliseconds = int.tryParse(hasPrefix ? value.substring(1) : value);
+    return milliseconds != null
+        ? DateTime.fromMillisecondsSinceEpoch(
+            milliseconds,
+            isUtc: hasPrefix ? value.startsWith('u') : false,
+          )
+        : null;
+  }
+
+  final start = parseDateTime(pieces.first);
+  final end = parseDateTime(pieces.last);
+  if (start == null || end == null) {
+    return null;
+  }
   return DateTimeRange(
-    start: DateTime.fromMillisecondsSinceEpoch(int.parse(pieces.first)),
-    end: DateTime.fromMillisecondsSinceEpoch(int.parse(pieces.last)),
+    start: start,
+    end: end,
   );
 }
 
@@ -137,6 +191,18 @@ FFPlace placeFromString(String placeStr) {
 FFUploadedFile uploadedFileFromString(String uploadedFileStr) =>
     FFUploadedFile.deserialize(uploadedFileStr);
 
+DocumentReference _deserializeDocumentReference(
+  String refStr,
+  List<String> collectionNamePath,
+) {
+  var path = '';
+  final docIds = refStr.split(_kDocIdDelimeter);
+  for (int i = 0; i < docIds.length && i < collectionNamePath.length; i++) {
+    path += '/${collectionNamePath[i]}/${docIds[i]}';
+  }
+  return FirebaseFirestore.instance.doc(path);
+}
+
 enum ParamType {
   int,
   double,
@@ -150,6 +216,8 @@ enum ParamType {
   FFUploadedFile,
   JSON,
 
+  Document,
+  DocumentReference,
   DataStruct,
 }
 
@@ -157,6 +225,7 @@ dynamic deserializeParam<T>(
   String? param,
   ParamType paramType,
   bool isList, {
+  List<String>? collectionNamePath,
   StructBuilder<T>? structBuilder,
 }) {
   try {
@@ -175,6 +244,7 @@ dynamic deserializeParam<T>(
                 p,
                 paramType,
                 false,
+                collectionNamePath: collectionNamePath,
                 structBuilder: structBuilder,
               ))
           .where((p) => p != null)
@@ -191,10 +261,7 @@ dynamic deserializeParam<T>(
       case ParamType.bool:
         return param == 'true';
       case ParamType.DateTime:
-        final milliseconds = int.tryParse(param);
-        return milliseconds != null
-            ? DateTime.fromMillisecondsSinceEpoch(milliseconds)
-            : null;
+        return dateTimeFromString(param);
       case ParamType.DateTimeRange:
         return dateTimeRangeFromString(param);
       case ParamType.LatLng:
@@ -207,6 +274,8 @@ dynamic deserializeParam<T>(
         return uploadedFileFromString(param);
       case ParamType.JSON:
         return json.decode(param);
+      case ParamType.DocumentReference:
+        return _deserializeDocumentReference(param, collectionNamePath ?? []);
 
       case ParamType.DataStruct:
         final data = json.decode(param) as Map<String, dynamic>? ?? {};
@@ -219,4 +288,33 @@ dynamic deserializeParam<T>(
     print('Error deserializing parameter: $e');
     return null;
   }
+}
+
+Future<dynamic> Function(String) getDoc(
+  List<String> collectionNamePath,
+  RecordBuilder recordBuilder,
+) {
+  return (String ids) => _deserializeDocumentReference(ids, collectionNamePath)
+      .get()
+      .then((s) => recordBuilder(s));
+}
+
+Future<List<T>> Function(String) getDocList<T>(
+  List<String> collectionNamePath,
+  RecordBuilder<T> recordBuilder,
+) {
+  return (String idsList) {
+    List<String> docIds = [];
+    try {
+      final ids = json.decode(idsList) as Iterable;
+      docIds = ids.where((d) => d is String).map((d) => d as String).toList();
+    } catch (_) {}
+    return Future.wait(
+      docIds.map(
+        (ids) => _deserializeDocumentReference(ids, collectionNamePath)
+            .get()
+            .then((s) => recordBuilder(s)),
+      ),
+    ).then((docs) => docs.where((d) => d != null).map((d) => d!).toList());
+  };
 }

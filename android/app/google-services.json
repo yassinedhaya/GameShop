@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "512901085033",
+    "project_id": "ptm-3a51-tve3us",
+    "storage_bucket": "ptm-3a51-tve3us.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:512901085033:android:c19432853cf93a71046ff8",
+        "android_client_info": {
+          "package_name": "com.mycompany.ptm3a51"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSjbwSFhNO4z_zIo5Fzqu7UObzx0MGMmg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

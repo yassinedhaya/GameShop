@@ -1,22 +1,25 @@
 // ignore_for_file: unnecessary_getters_setters
 
-import '/backend/schema/util/schema_util.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'index.dart';
+import '/backend/schema/util/firestore_util.dart';
+
 import '/flutter_flow/flutter_flow_util.dart';
 
-class GameStruct extends BaseStruct {
+class GameStruct extends FFFirebaseStruct {
   GameStruct({
     String? nom,
     int? prix,
     String? image,
     String? description,
     int? quantity,
+    FirestoreUtilData firestoreUtilData = const FirestoreUtilData(),
   })  : _nom = nom,
         _prix = prix,
         _image = image,
         _description = description,
-        _quantity = quantity;
+        _quantity = quantity,
+        super(firestoreUtilData);
 
   // "Nom" field.
   String? _nom;
@@ -153,6 +156,10 @@ GameStruct createGameStruct({
   String? image,
   String? description,
   int? quantity,
+  Map<String, dynamic> fieldValues = const {},
+  bool clearUnsetFields = true,
+  bool create = false,
+  bool delete = false,
 }) =>
     GameStruct(
       nom: nom,
@@ -160,4 +167,68 @@ GameStruct createGameStruct({
       image: image,
       description: description,
       quantity: quantity,
+      firestoreUtilData: FirestoreUtilData(
+        clearUnsetFields: clearUnsetFields,
+        create: create,
+        delete: delete,
+        fieldValues: fieldValues,
+      ),
     );
+
+GameStruct? updateGameStruct(
+  GameStruct? game, {
+  bool clearUnsetFields = true,
+  bool create = false,
+}) =>
+    game
+      ?..firestoreUtilData = FirestoreUtilData(
+        clearUnsetFields: clearUnsetFields,
+        create: create,
+      );
+
+void addGameStructData(
+  Map<String, dynamic> firestoreData,
+  GameStruct? game,
+  String fieldName, [
+  bool forFieldValue = false,
+]) {
+  firestoreData.remove(fieldName);
+  if (game == null) {
+    return;
+  }
+  if (game.firestoreUtilData.delete) {
+    firestoreData[fieldName] = FieldValue.delete();
+    return;
+  }
+  final clearFields = !forFieldValue && game.firestoreUtilData.clearUnsetFields;
+  if (clearFields) {
+    firestoreData[fieldName] = <String, dynamic>{};
+  }
+  final gameData = getGameFirestoreData(game, forFieldValue);
+  final nestedData = gameData.map((k, v) => MapEntry('$fieldName.$k', v));
+
+  final mergeFields = game.firestoreUtilData.create || clearFields;
+  firestoreData
+      .addAll(mergeFields ? mergeNestedFields(nestedData) : nestedData);
+}
+
+Map<String, dynamic> getGameFirestoreData(
+  GameStruct? game, [
+  bool forFieldValue = false,
+]) {
+  if (game == null) {
+    return {};
+  }
+  final firestoreData = mapToFirestore(game.toMap());
+
+  // Add any Firestore field values
+  mapToFirestore(game.firestoreUtilData.fieldValues)
+      .forEach((k, v) => firestoreData[k] = v);
+
+  return forFieldValue ? mergeNestedFields(firestoreData) : firestoreData;
+}
+
+List<Map<String, dynamic>> getGameListFirestoreData(
+  List<GameStruct>? games,
+) =>
+    games?.map((e) => getGameFirestoreData(e, true)).toList() ?? [];

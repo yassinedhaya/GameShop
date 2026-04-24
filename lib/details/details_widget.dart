@@ -8,7 +8,20 @@ import 'details_model.dart';
 export 'details_model.dart';
 
 class DetailsWidget extends StatefulWidget {
-  const DetailsWidget({super.key});
+  const DetailsWidget({
+    super.key,
+    required this.paramName,
+    required this.paamDescription,
+    required this.paramPrice,
+    required this.paramQuantity,
+    required this.paramImage,
+  });
+
+  final String? paramName;
+  final String? paamDescription;
+  final int? paramPrice;
+  final int? paramQuantity;
+  final String? paramImage;
 
   static String routeName = 'Details';
   static String routePath = '/details';
@@ -63,7 +76,10 @@ class _DetailsWidgetState extends State<DetailsWidget> {
             },
           ),
           title: Text(
-            'Details',
+            valueOrDefault<String>(
+              widget.paramName,
+              'empty',
+            ),
             style: FlutterFlowTheme.of(context).headlineMedium.override(
                   font: GoogleFonts.interTight(
                     fontWeight:
@@ -92,14 +108,17 @@ class _DetailsWidgetState extends State<DetailsWidget> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8.0),
                 child: Image.network(
-                  'https://picsum.photos/seed/744/600',
+                  widget.paramImage!,
                   width: 391.9,
                   height: 200.0,
                   fit: BoxFit.cover,
                 ),
               ),
               Text(
-                'Hello World',
+                valueOrDefault<String>(
+                  widget.paamDescription,
+                  'c',
+                ),
                 style: FlutterFlowTheme.of(context).bodyMedium.override(
                       font: GoogleFonts.inter(
                         fontWeight:
@@ -115,17 +134,19 @@ class _DetailsWidgetState extends State<DetailsWidget> {
                     ),
               ),
               Text(
-                'Hello World',
+                valueOrDefault<String>(
+                  widget.paramPrice?.toString(),
+                  '1',
+                ),
                 style: FlutterFlowTheme.of(context).bodyMedium.override(
                       font: GoogleFonts.inter(
-                        fontWeight:
-                            FlutterFlowTheme.of(context).bodyMedium.fontWeight,
+                        fontWeight: FontWeight.bold,
                         fontStyle:
                             FlutterFlowTheme.of(context).bodyMedium.fontStyle,
                       ),
+                      fontSize: 20.0,
                       letterSpacing: 0.0,
-                      fontWeight:
-                          FlutterFlowTheme.of(context).bodyMedium.fontWeight,
+                      fontWeight: FontWeight.bold,
                       fontStyle:
                           FlutterFlowTheme.of(context).bodyMedium.fontStyle,
                     ),
@@ -134,26 +155,7 @@ class _DetailsWidgetState extends State<DetailsWidget> {
                 mainAxisSize: MainAxisSize.max,
                 children: [
                   Text(
-                    'Hello World',
-                    style: FlutterFlowTheme.of(context).bodyMedium.override(
-                          font: GoogleFonts.inter(
-                            fontWeight: FlutterFlowTheme.of(context)
-                                .bodyMedium
-                                .fontWeight,
-                            fontStyle: FlutterFlowTheme.of(context)
-                                .bodyMedium
-                                .fontStyle,
-                          ),
-                          letterSpacing: 0.0,
-                          fontWeight: FlutterFlowTheme.of(context)
-                              .bodyMedium
-                              .fontWeight,
-                          fontStyle:
-                              FlutterFlowTheme.of(context).bodyMedium.fontStyle,
-                        ),
-                  ),
-                  Text(
-                    'Hello World',
+                    'Quantiy : ${widget.paramQuantity?.toString()}',
                     style: FlutterFlowTheme.of(context).bodyMedium.override(
                           font: GoogleFonts.inter(
                             fontWeight: FlutterFlowTheme.of(context)
